@@ -11,6 +11,7 @@ const filterButtons = document.querySelectorAll("[data-filter]");
 
 let tasks = loadTasks();
 let currentFilter = "all";
+let editingId = null;
 
 function loadTasks() {
   try {
@@ -23,12 +24,24 @@ function loadTasks() {
 }
 
 function saveTasks() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  } catch {
+    // Storage can be unavailable in private browsing or when its quota is full.
+  }
+}
+
+function createId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function createTask(title) {
   return {
-    id: crypto.randomUUID(),
+    id: createId(),
     title,
     completed: false,
     createdAt: new Date().toISOString(),
@@ -52,7 +65,45 @@ function toggleTask(id) {
 
 function deleteTask(id) {
   tasks = tasks.filter((task) => task.id !== id);
+  if (editingId === id) {
+    editingId = null;
+  }
   saveTasks();
+  render();
+}
+
+function renameTask(id, title) {
+  const trimmed = title.trim();
+
+  if (!trimmed) {
+    editingId = null;
+    render();
+    return;
+  }
+
+  tasks = tasks.map((task) =>
+    task.id === id ? { ...task, title: trimmed } : task,
+  );
+
+  editingId = null;
+  saveTasks();
+  render();
+}
+
+function startEditing(id) {
+  editingId = id;
+  render();
+
+  const editInput = list.querySelector(".task-edit-input");
+
+  if (editInput) {
+    editInput.focus();
+    editInput.select();
+  }
+}
+
+function stopEditing() {
+  editingId = null;
   render();
 }
 
@@ -86,6 +137,7 @@ function createTaskElement(task) {
   const title = document.createElement("span");
   title.className = "task-title";
   title.textContent = task.title;
+  title.title = "双击编辑任务";
 
   const deleteButton = document.createElement("button");
   deleteButton.type = "button";
@@ -93,6 +145,35 @@ function createTaskElement(task) {
   deleteButton.textContent = "删除";
   deleteButton.setAttribute("aria-label", `删除“${task.title}”`);
   deleteButton.addEventListener("click", () => deleteTask(task.id));
+
+  if (task.id === editingId) {
+    const editInput = document.createElement("input");
+    editInput.type = "text";
+    editInput.className = "task-edit-input";
+    editInput.value = task.title;
+    editInput.maxLength = 100;
+    editInput.setAttribute("aria-label", `编辑任务“${task.title}”`);
+    editInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        renameTask(task.id, editInput.value);
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        stopEditing();
+      }
+    });
+    editInput.addEventListener("blur", () => {
+      if (editingId === task.id) {
+        renameTask(task.id, editInput.value);
+      }
+    });
+
+    title.replaceWith(editInput);
+    item.append(checkbox, editInput, deleteButton);
+    return item;
+  }
+
+  title.addEventListener("dblclick", () => startEditing(task.id));
 
   item.append(checkbox, title, deleteButton);
   return item;

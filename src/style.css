@@ -149,6 +149,25 @@ h1 {
   text-decoration: line-through;
 }
 
+.task-title {
+  cursor: text;
+}
+
+.task-edit-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+}
+
+.task-edit-input:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+
 .delete-button {
   padding: 7px 10px;
   border: 0;
