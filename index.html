@@ -1,13 +1,55 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>elio</title>
+    <meta name="description" content="Elio 是一个简洁的个人任务管理器" />
+    <title>Elio · 任务管理器</title>
   </head>
+
   <body>
-    <div id="app"></div>
+    <main class="app">
+      <header class="hero">
+        <p class="eyebrow">ELIO TASKS</p>
+        <h1>把今天要做的事整理清楚</h1>
+        <p class="subtitle">一个轻量、专注且保存在本地的任务管理器。</p>
+      </header>
+
+      <section class="task-panel" aria-labelledby="task-heading">
+        <h2 id="task-heading">我的任务</h2>
+
+        <form id="task-form" class="task-form">
+          <label class="sr-only" for="task-input">任务内容</label>
+          <input
+            id="task-input"
+            name="task"
+            type="text"
+            maxlength="100"
+            placeholder="输入一项任务……"
+            autocomplete="off"
+            required
+          />
+          <button type="submit">添加任务</button>
+        </form>
+
+        <div class="toolbar">
+          <p id="task-stats">0 项待完成</p>
+
+          <div class="filters" aria-label="任务筛选">
+            <button type="button" data-filter="all" class="active">全部</button>
+            <button type="button" data-filter="active">待完成</button>
+            <button type="button" data-filter="completed">已完成</button>
+          </div>
+        </div>
+
+        <ul id="task-list" class="task-list"></ul>
+
+        <p id="empty-state" class="empty-state">
+          还没有任务，先添加一项吧。
+        </p>
+      </section>
+    </main>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
