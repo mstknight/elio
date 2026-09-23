@@ -15,7 +15,8 @@ let currentFilter = "all";
 function loadTasks() {
   try {
     const savedTasks = localStorage.getItem(STORAGE_KEY);
-    return savedTasks ? JSON.parse(savedTasks) : [];
+    const parsedTasks = savedTasks ? JSON.parse(savedTasks) : [];
+    return Array.isArray(parsedTasks) ? parsedTasks : [];
   } catch {
     return [];
   }
@@ -98,3 +99,39 @@ function createTaskElement(task) {
 }
 
 function render() {
+  const visibleTasks = getVisibleTasks();
+  const activeCount = tasks.filter((task) => !task.completed).length;
+
+  list.replaceChildren(...visibleTasks.map(createTaskElement));
+  stats.textContent = `${activeCount} 项待完成`;
+  emptyState.hidden = visibleTasks.length > 0;
+
+  filterButtons.forEach((button) => {
+    const isActive = button.dataset.filter === currentFilter;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const title = input.value.trim();
+
+  if (!title) {
+    input.focus();
+    return;
+  }
+
+  addTask(title);
+  form.reset();
+  input.focus();
+});
+
+filterButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    currentFilter = button.dataset.filter;
+    render();
+  });
+});
+
+render();
