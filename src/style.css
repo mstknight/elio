@@ -136,7 +136,7 @@ h1 {
 
 .task-item {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 14px;
@@ -151,9 +151,12 @@ h1 {
 
 .task-title {
   cursor: text;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .task-edit-input {
+  min-width: 0;
   width: 100%;
   padding: 6px 10px;
   border: 1px solid #93c5fd;

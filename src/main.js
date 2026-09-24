@@ -8,6 +8,7 @@ const list = document.querySelector("#task-list");
 const stats = document.querySelector("#task-stats");
 const emptyState = document.querySelector("#empty-state");
 const filterButtons = document.querySelectorAll("[data-filter]");
+const storageStatus = document.querySelector('#storage-status');
 
 let tasks = loadTasks();
 let currentFilter = "all";
@@ -17,17 +18,36 @@ function loadTasks() {
   try {
     const savedTasks = localStorage.getItem(STORAGE_KEY);
     const parsedTasks = savedTasks ? JSON.parse(savedTasks) : [];
-    return Array.isArray(parsedTasks) ? parsedTasks : [];
+    if (!Array.isArray(parsedTasks)) throw new Error('Invalid task data');
+    const ids = new Set();
+    const valid = parsedTasks.filter(task => {
+      if (!task || typeof task.id !== 'string' || !task.id || ids.has(task.id) ||
+          typeof task.title !== 'string' || !task.title.trim() || task.title.length > 100 ||
+          typeof task.completed !== 'boolean') return false;
+      ids.add(task.id);
+      return true;
+    });
+    if (valid.length !== parsedTasks.length) {
+      showStorageMessage('部分本地任务格式异常，已跳过无效记录。');
+    }
+    return valid;
   } catch {
+    showStorageMessage('无法读取本地任务。请检查浏览器存储设置；原始数据未被主动删除。');
     return [];
   }
+}
+
+function showStorageMessage(message) {
+  storageStatus.textContent = message;
+  storageStatus.hidden = !message;
 }
 
 function saveTasks() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    showStorageMessage('');
   } catch {
-    // Storage can be unavailable in private browsing or when its quota is full.
+    showStorageMessage('保存失败：当前修改仅保留在此页面，刷新可能丢失。请检查浏览器存储权限或空间。');
   }
 }
 
@@ -72,12 +92,12 @@ function deleteTask(id) {
   render();
 }
 
-function renameTask(id, title) {
+function renameTask(id, title, redraw = true) {
   const trimmed = title.trim();
 
   if (!trimmed) {
     editingId = null;
-    render();
+    if (redraw) render();
     return;
   }
 
@@ -87,7 +107,7 @@ function renameTask(id, title) {
 
   editingId = null;
   saveTasks();
-  render();
+  if (redraw) render();
 }
 
 function startEditing(id) {
@@ -138,6 +158,16 @@ function createTaskElement(task) {
   title.className = "task-title";
   title.textContent = task.title;
   title.title = "双击编辑任务";
+  title.tabIndex = 0;
+  title.setAttribute('role', 'button');
+  title.setAttribute('aria-label', `编辑任务“${task.title}”`);
+  title.addEventListener('dblclick', () => startEditing(task.id));
+  title.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      startEditing(task.id);
+    }
+  });
 
   const deleteButton = document.createElement("button");
   deleteButton.type = "button";
@@ -154,6 +184,7 @@ function createTaskElement(task) {
     editInput.maxLength = 100;
     editInput.setAttribute("aria-label", `编辑任务“${task.title}”`);
     editInput.addEventListener("keydown", (event) => {
+      if (event.isComposing || event.keyCode === 229) return;
       if (event.key === "Enter") {
         event.preventDefault();
         renameTask(task.id, editInput.value);
@@ -164,16 +195,18 @@ function createTaskElement(task) {
     });
     editInput.addEventListener("blur", () => {
       if (editingId === task.id) {
-        renameTask(task.id, editInput.value);
+        // Keep the clicked controls attached until their click is delivered.
+        renameTask(task.id, editInput.value, false);
+        title.textContent = tasks.find(entry => entry.id === task.id)?.title ?? task.title;
+        title.setAttribute('aria-label', `编辑任务“${title.textContent}”`);
+        editInput.replaceWith(title);
       }
     });
 
-    title.replaceWith(editInput);
     item.append(checkbox, editInput, deleteButton);
     return item;
   }
 
-  title.addEventListener("dblclick", () => startEditing(task.id));
 
   item.append(checkbox, title, deleteButton);
   return item;
@@ -186,6 +219,8 @@ function render() {
   list.replaceChildren(...visibleTasks.map(createTaskElement));
   stats.textContent = `${activeCount} 项待完成`;
   emptyState.hidden = visibleTasks.length > 0;
+  emptyState.textContent = currentFilter === 'active' ? '没有待完成任务。' :
+    currentFilter === 'completed' ? '还没有已完成任务。' : '还没有任务，先添加一项吧。';
 
   filterButtons.forEach((button) => {
     const isActive = button.dataset.filter === currentFilter;
